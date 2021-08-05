@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" connectionConfig="{&quot;serverAliveInterval&quot;:300}" host="114.212.86.42" id="52b7c84b-5fc8-4a64-b2e9-3324fe2ae0af" port="22" customName="gpu_splitnn" nameFormat="CUSTOM" username="lzy">
+        <option name="customName" value="gpu_splitnn" />
+      </sshConfig>
+    </configs>
+  </component>
+</project>

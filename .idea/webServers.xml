@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="abc20b19-670c-4876-9434-402f412bdd42" name="gpu_splitnn">
+        <fileTransfer rootFolder="/home/lzy" accessType="SFTP" host="114.212.86.42" port="22" sshConfigId="52b7c84b-5fc8-4a64-b2e9-3324fe2ae0af" sshConfig="gpu_splitnn">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
