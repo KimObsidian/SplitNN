@@ -39,6 +39,14 @@ class SplitNN(torch.nn.Module):
                 client_output[owner] = torch.add(client_output[owner], noise)
                 client_output[owner].to(device)
                 #print(client_output[owner].requires_grad)
+                value_list = [0, 1]
+                probability = [0.05, 0.95]
+                random_response = []
+                for i in range(128):
+                    temp = self.number_of_certain_probability(value_list, probability)
+                    random_response.append(temp)
+                random_response = torch.tensor(random_response)
+                client_output[owner] = torch.mul(client_output[owner], random_response)
                 remote_outputs.append(client_output[owner].requires_grad_().to(device))
                 i += 1
             else:
@@ -46,19 +54,11 @@ class SplitNN(torch.nn.Module):
                 client_output[owner] = self.models[owner](data_pointer[owner].reshape([-1, 160]).to(device))
                 client_output[owner].to(device)
                 remote_outputs.append(client_output[owner].requires_grad_())
-        #server_input = torch.min(remote_outputs[0],remote_outputs[1])
+        server_input = torch.min(remote_outputs[0],remote_outputs[1])
         #server_input = torch.cat(remote_outputs,1)
         #server_input = torch.max(remote_outputs[0],remote_outputs[1])
-        server_input = torch.add(remote_outputs[0],remote_outputs[1])
+        #server_input = torch.add(remote_outputs[0],remote_outputs[1])
         #server_input = torch.add(remote_outputs[0]/2, remote_outputs[1]/2)
-        value_list=[0,1]
-        probability=[0.3, 0.7]
-        random_response=[]
-        for i in range(128):
-            temp=self.number_of_certain_probability(value_list,probability)
-            random_response.append(temp)
-        random_response=torch.tensor(random_response)
-        server_input=torch.mul(server_input, random_response)
         self.models["server"].to(device)
         server_output = self.models["server"](server_input)
         return server_output
