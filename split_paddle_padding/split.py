@@ -1,3 +1,4 @@
+import paddle.fluid.metrics
 from torch import nn, optim
 import torch
 import random
@@ -8,6 +9,9 @@ from distribute_data import Distribute_Youtube
 from splitnn_net import SplitNN
 from pytorch_pruning import pytorch_pruning
 from torch.distributions.laplace import Laplace
+import paddle.fluid as fluid
+from sklearn import metrics
+
 
 input_size = [160, 160]
 hidden_sizes = {"client_1": [128], "client_2": [128], "server": [128, 128]}
@@ -17,8 +21,10 @@ watch_vec_size = 64
 search_vec_size = 64
 other_feat_size = 32
 label_path = "/Users/lizhenyu/PycharmProjects/YoutubeDNN/label.csv"
-user_watch, user_search, user_feat, user_labels = prepare_movielens_data(0, 32, watch_vec_size, search_vec_size,
-                                                                         other_feat_size, 6040, label_path)
+user_watch=np.load('user_watch.npy')
+user_search=np.load('user_search.npy')
+user_feat=np.load('user_feat.npy')
+user_labels=np.load('user_labels.npy')
 inputs = np.hstack((user_watch, user_search, user_feat))
 x_data = torch.FloatTensor(inputs)
 y_data = torch.FloatTensor(user_labels)
@@ -31,11 +37,11 @@ test_size = len(deal_dataset) - train_size
 
 def train(x, target, splitNN):
     target.to(device)
-    splitNN.zero_grads()
     pred = splitNN.forward(x).to(device)
     criterion = nn.CrossEntropyLoss()
     temp = target.reshape(-1, pred.shape[0])[0].long().to(device)
     loss = criterion(pred, temp)
+    splitNN.zero_grads()
     loss.backward()
     splitNN.step()
     return loss.detach().item()
@@ -166,6 +172,61 @@ def data_test_acc(dataloader):
 
 
 
+def cal_auc_paddle(dataloader):
+    auc=paddle.metric.Auc()
+    label_list=[]
+    acc=0.0
+    auc_res=0.0
+    with torch.no_grad():
+        for data_ptr, label in dataloader:
+            labels=[]
+            outputs=splitnn.cal_auc_forward(data_ptr)
+            # for output in outputs.tolist():
+            #     score.append(output)
+            for i in label.tolist():
+                temp = []
+                for j in range(3952):
+                    temp.append(0)
+                temp[int(i[0])]=1
+                labels.append(temp)
+            pred_scores = outputs.numpy()
+
+            diff = np.abs(pred_scores-np.array(labels))
+            diff[diff>0.5]=1
+            acc=1-np.mean(diff)
+            class0_preds=1-pred_scores
+            class1_preds=pred_scores
+            preds=np.concatenate((class0_preds, class1_preds),axis=1)
+            auc.update(preds=preds, labels=np.array(label))
+            auc_res=auc.accumulate()
+            print(auc_res)
+
+
+
+
+def cal_auc(dataloader):
+    score=[]
+    labels=[]
+    label_res=[]
+    with torch.no_grad():
+        for data_ptr, label in dataloader:
+            outputs=splitnn.forward(data_ptr)
+            for output in outputs.tolist():
+                score.append(output)
+            for i in label.tolist():
+                label_res.append(int(i[0]))
+                temp = []
+                for j in range(3952):
+                    temp.append(0)
+                temp[int(i[0])]=1
+                labels.append(temp)
+    score=np.array(score)
+    labels=np.array(labels)
+    print(metrics.roc_auc_score(labels, score, average='micro'))
+    return
+
+
+
 def train_model(epoch, dataset):
     res=[]
     train_data, test_data = torch.utils.data.random_split(dataset, [train_size, test_size])
@@ -183,16 +244,13 @@ def train_model(epoch, dataset):
         train_acc(distributed_trainloader)
         temp=data_test_acc(distributed_testloader)
         res.append(temp)
+        #cal_auc_paddle(distributed_testloader)
+
     return max(res)
-
-
-
-
-
 
 if __name__=="__main__":
     #'''
-    res=[]
+    res = []
     for j in range(30):
         models = {
             "client_1": nn.Sequential(
@@ -203,7 +261,6 @@ if __name__=="__main__":
                 nn.Linear(input_size[1], 128),
                 nn.ReLU(),
             ),
-
             "server": nn.Sequential(
                 nn.Linear(128, 128),
                 nn.ReLU(),
@@ -231,16 +288,3 @@ if __name__=="__main__":
     # importance_estimation(splitnn.models['client_1'], "client_1")
     # importance_estimation(splitnn.models['client_2'], "client_2")
     # importance_estimation(splitnn.models['server'], "server")
-
-
-
-
-
-
-
-
-
-
-
-
-

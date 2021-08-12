@@ -40,7 +40,7 @@ class SplitNN(torch.nn.Module):
                 client_output[owner].to(device)
                 #print(client_output[owner].requires_grad)
                 value_list = [0, 1]
-                probability = [0.05, 0.95]
+                probability = [0.2, 0.8]
                 random_response = []
                 for i in range(128):
                     temp = self.number_of_certain_probability(value_list, probability)
